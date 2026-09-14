@@ -1,0 +1,30 @@
+# ============================================================
+# Gateway (Kong) .gitignore
+# ============================================================
+
+# --------------------------
+# Environment & Secrets
+# --------------------------
+.env
+.env.*
+!.env.example
+
+# Generated TLS certificates / keys
+*.pem
+*.key
+*.crt
+*.p12
+certs/
+
+# Local config overrides (keep the committed kong.yml as the
+# canonical declarative config; local overrides go here)
+kong.local.yml
+kong.override.yml
+
+# --------------------------
+# OS & Editor
+# --------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

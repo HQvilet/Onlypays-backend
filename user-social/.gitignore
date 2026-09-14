@@ -1,0 +1,62 @@
+# ============================================================
+# User & Social Service — Node.js / TypeScript .gitignore
+# ============================================================
+
+# --------------------------
+# Dependencies
+# --------------------------
+node_modules/
+
+# --------------------------
+# Build output
+# --------------------------
+dist/
+build/
+
+# --------------------------
+# Prisma generated client
+# --------------------------
+# Keep schema.prisma, ignore generated client artefacts
+prisma/migrations/*.sql.bak
+
+# The generated client itself lives in node_modules/.prisma
+# and is regenerated via `prisma generate` — already covered
+# by node_modules/ above.
+
+# --------------------------
+# Environment
+# --------------------------
+.env
+.env.*
+!.env.example
+
+# --------------------------
+# Logs
+# --------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --------------------------
+# TypeScript
+# --------------------------
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# --------------------------
+# OS & Editor
+# --------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# --------------------------
+# Misc
+# --------------------------
+.cache/
+coverage/

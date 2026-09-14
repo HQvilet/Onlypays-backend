@@ -1,0 +1,64 @@
+# ============================================================
+# Entitlement Service — Spring Boot / Maven .gitignore
+# ============================================================
+
+# --------------------------
+# Maven build output
+# --------------------------
+target/
+target_classes/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# --------------------------
+# Environment & Secrets
+# --------------------------
+.env
+.env.*
+!.env.example
+src/main/resources/application-local.yml
+src/main/resources/application-local.properties
+src/main/resources/application-secrets.yml
+
+# --------------------------
+# IDE — IntelliJ IDEA
+# --------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# --------------------------
+# IDE — Eclipse / STS
+# --------------------------
+.classpath
+.project
+.settings/
+bin/
+.springBeans
+.sts4-cache/
+
+# --------------------------
+# IDE — VS Code
+# --------------------------
+.vscode/
+
+# --------------------------
+# OS
+# --------------------------
+.DS_Store
+Thumbs.db
+
+# --------------------------
+# Logs
+# --------------------------
+*.log
+logs/
+
+# --------------------------
+# JVM crash logs
+# --------------------------
+hs_err_pid*
+replay_pid*

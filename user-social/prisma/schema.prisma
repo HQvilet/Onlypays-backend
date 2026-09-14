@@ -1,0 +1,274 @@
+// OnlyPays - User & Social Service Prisma Schema
+// Database-per-Service: Dedicated PostgreSQL instance
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  SUBSCRIBER
+  CREATOR
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PAUSED
+}
+
+enum PostVisibility {
+  PUBLIC
+  SUBSCRIBERS_ONLY
+  TIER_LOCKED
+  PAY_PER_VIEW
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+enum CollectionStatus {
+  DRAFT
+  ACTIVE
+  UNLISTED
+  ARCHIVED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Stores user identity mapping (Auth0 sub claim), profile info, and creator status.
+model User {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auth0Id     String    @unique @map("auth0_id") @db.VarChar(128)
+  username    String    @unique @map("username") @db.VarChar(50)
+  email       String    @unique @map("email") @db.VarChar(255)
+  displayName String    @map("display_name") @db.VarChar(100)
+  bio         String?   @db.Text
+  avatarUrl   String?   @map("avatar_url") @db.Text
+  bannerUrl   String?   @map("banner_url") @db.Text
+  role        Role      @default(SUBSCRIBER)
+  isVerified  Boolean   @default(false) @map("is_verified")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  subscriptionTiers          CreatorSubscriptionTier[]
+  subscriptionsAsSubscriber Subscription[]              @relation("SubscriberRelation")
+  subscriptionsAsCreator    Subscription[]              @relation("CreatorRelation")
+  following                  Follow[]                    @relation("FollowerRelation")
+  followers                  Follow[]                    @relation("FollowingRelation")
+  posts                      Post[]
+  likes                      PostLike[]
+  bookmarks                  PostBookmark[]
+  comments                   PostComment[]
+  marketplaceCollections     MarketplaceCollection[]
+
+  @@index([auth0Id])
+  @@index([username])
+  @@index([role])
+  @@map("users")
+}
+
+/// Defines subscription tier packages offered by Creators (priced in Opux / Opx).
+model CreatorSubscriptionTier {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId   String   @map("creator_id") @db.Uuid
+  creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title       String   @db.VarChar(100)
+  description String?  @db.Text
+  priceOpx    Decimal  @map("price_opx") @db.Decimal(14, 4)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  subscriptions Subscription[]
+  posts         Post[]
+
+  @@index([creatorId])
+  @@map("creator_subscription_tiers")
+}
+
+/// Metadata tracking subscriber-creator subscription status and billing periods.
+model Subscription {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subscriberId       String             @map("subscriber_id") @db.Uuid
+  subscriber         User               @relation("SubscriberRelation", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creatorId          String             @map("creator_id") @db.Uuid
+  creator            User               @relation("CreatorRelation", fields: [creatorId], references: [id], onDelete: Cascade)
+  tierId             String             @map("tier_id") @db.Uuid
+  tier               CreatorSubscriptionTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime           @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd   DateTime           @map("current_period_end") @db.Timestamptz
+  canceledAt         DateTime?          @map("canceled_at") @db.Timestamptz
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([subscriberId, creatorId])
+  @@index([subscriberId, status])
+  @@index([creatorId, status])
+  @@map("subscriptions")
+}
+
+/// Free social graph relationships (following creators/users).
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  follower    User     @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String   @map("following_id") @db.Uuid
+  following   User     @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+/// Creator feed posts, visibility rules, access pricing, and engagement counters.
+model Post {
+  id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId      String                   @map("creator_id") @db.Uuid
+  creator        User                     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  caption        String?                  @db.Text
+  visibility     PostVisibility           @default(SUBSCRIBERS_ONLY)
+  requiredTierId String?                  @map("required_tier_id") @db.Uuid
+  requiredTier   CreatorSubscriptionTier? @relation(fields: [requiredTierId], references: [id], onDelete: SetNull)
+  priceOpx       Decimal?                 @map("price_opx") @db.Decimal(14, 4)
+  status         PostStatus               @default(PUBLISHED)
+  likeCount      Int                      @default(0) @map("like_count")
+  commentCount   Int                      @default(0) @map("comment_count")
+  bookmarkCount  Int                      @default(0) @map("bookmark_count")
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?                @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  attachments PostAttachment[]
+  likes       PostLike[]
+  bookmarks   PostBookmark[]
+  comments    PostComment[]
+
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@index([visibility])
+  @@map("posts")
+}
+
+/// References media assets uploaded to Media Service attached to posts.
+model PostAttachment {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId       String    @map("post_id") @db.Uuid
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaId      String    @map("media_id") @db.Uuid
+  mediaType    MediaType @map("media_type")
+  previewUrl   String?   @map("preview_url") @db.Text
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([postId, displayOrder])
+  @@map("post_attachments")
+}
+
+/// Post likes join table.
+model PostLike {
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id") @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("post_likes")
+}
+
+/// Saved/bookmarked posts per user.
+model PostBookmark {
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id") @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("post_bookmarks")
+}
+
+/// Feed post comments and nested reply trees.
+model PostComment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId          String        @map("post_id") @db.Uuid
+  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId          String        @map("user_id") @db.Uuid
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentCommentId String?       @map("parent_comment_id") @db.Uuid
+  parentComment   PostComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         PostComment[] @relation("CommentReplies")
+  content         String        @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
+
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([parentCommentId])
+  @@map("post_comments")
+}
+
+/// Storefront metadata for creator media collection bundles priced in Opx.
+model MarketplaceCollection {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId     String           @map("creator_id") @db.Uuid
+  creator       User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title         String           @db.VarChar(150)
+  description   String?          @db.Text
+  coverImageUrl String           @map("cover_image_url") @db.Text
+  priceOpx      Decimal          @map("price_opx") @db.Decimal(14, 4)
+  status        CollectionStatus @default(ACTIVE)
+  itemCount     Int              @default(0) @map("item_count")
+  salesCount    Int              @default(0) @map("sales_count")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  items MarketplaceCollectionItem[]
+
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@index([status, priceOpx])
+  @@map("marketplace_collections")
+}
+
+/// Individual media assets bundled inside marketplace collections.
+model MarketplaceCollectionItem {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collectionId          String                @map("collection_id") @db.Uuid
+  collection            MarketplaceCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  mediaId               String                @map("media_id") @db.Uuid
+  mediaType             MediaType             @map("media_type")
+  displayOrder          Int                   @default(0) @map("display_order")
+  watermarkedPreviewUrl String?               @map("watermarked_preview_url") @db.Text
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([collectionId, displayOrder])
+  @@map("marketplace_collection_items")
+}
