@@ -1,0 +1,42 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: gateway-configuration
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: gateway-configuration
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: 1
+      envoyService:
+        name: envoy-gateway-config
+  telemetry:
+    accessLog:
+      settings:
+      - format:
+          type: JSON
+          json:
+            start_time: "%START_TIME%"
+            method: "%REQ(:METHOD)%"
+            path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
+            protocol: "%PROTOCOL%"
+            status: "%RESPONSE_CODE%"
+            duration: "%DURATION%"
+            upstream_host: "%UPSTREAM_HOST%"
+        sinks:
+        - type: File
+          file:
+            path: "/dev/stdout"

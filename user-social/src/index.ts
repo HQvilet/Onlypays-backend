@@ -6,9 +6,11 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { prisma } from "./db/client.js";
 import apiRouter from "./routes/index.js";
+import logger from "./utils/logger.js";
 
 import { correlationMiddleware } from "./middleware/correlation.middleware.js";
 import { idempotencyMiddleware } from "./middleware/idempotency.middleware.js";
+import { httpLoggerMiddleware } from "./middleware/http-logger.middleware.js";
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -36,6 +38,9 @@ app.use(express.urlencoded({ extended: true }));
 // Request Correlation ID Middleware
 app.use(correlationMiddleware);
 
+// HTTP Request/Response Logger
+app.use(httpLoggerMiddleware);
+
 // Health & Readiness Probes
 app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "OK", service: "user-social", timestamp: new Date().toISOString() });
@@ -59,21 +64,21 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Global Error Handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error("Unhandled server error:", err);
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+    logger.error("Unhandled server error", { error: err.message, stack: err.stack, correlationId: req.correlationId });
     res.status(500).json({ status: "error", message: "Internal server error" });
 });
 
 async function startServer() {
     try {
         await prisma.$connect();
-        console.log("Connected to PostgreSQL via Prisma Client");
+        logger.info("Connected to PostgreSQL via Prisma Client");
 
         app.listen(PORT, () => {
-            console.log(`User & Social Service listening on port ${PORT}`);
+            logger.info(`User & Social Service listening on port ${PORT}`);
         });
     } catch (error) {
-        console.error("Failed to connect to database", error);
+        logger.error("Failed to connect to database", { error: (error as Error).message, stack: (error as Error).stack });
         process.exit(1);
     }
 }

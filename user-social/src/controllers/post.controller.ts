@@ -7,6 +7,7 @@ import type {
     PaginationQuery,
 } from "../types/post.types.js";
 import * as postService from "../services/post.service.js";
+import { childLogger } from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
 // Error handler
@@ -29,7 +30,10 @@ function handleServiceError(res: Response, error: unknown, correlationId?: strin
         return;
     }
 
-    console.error("[PostController]", { error, correlationId });
+    childLogger(correlationId).error("[PostController] Unhandled service error", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ status: "error", message: "Internal server error.", correlationId });
 }
 

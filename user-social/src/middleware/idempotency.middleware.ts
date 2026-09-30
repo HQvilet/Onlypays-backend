@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { redis } from "../cache/redis.js";
+import { childLogger } from "../utils/logger.js";
 
 interface IdempotencyOptions {
     /** Time-to-live in seconds for cached response (Default: 86400 / 24 hours) */
@@ -52,7 +53,10 @@ export const createIdempotencyMiddleware = (options: IdempotencyOptions = {}) =>
                 return;
             }
         } catch (err) {
-            console.warn("[Idempotency] Failed to query Redis cache, bypassing cache check:", (err as Error).message);
+            childLogger(req.correlationId).warn(
+                "[Idempotency] Failed to query Redis cache, bypassing cache check",
+                { error: (err as Error).message, idempotencyKey, cacheKey },
+            );
         }
 
         res.setHeader("X-Cache", "MISS");
@@ -71,7 +75,10 @@ export const createIdempotencyMiddleware = (options: IdempotencyOptions = {}) =>
                         body,
                     })
                 ).catch((err) => {
-                    console.error("[Idempotency] Failed to save response to Redis:", err.message);
+                    childLogger(req.correlationId).error(
+                        "[Idempotency] Failed to save response to Redis",
+                        { error: err.message, idempotencyKey, cacheKey },
+                    );
                 });
             }
 

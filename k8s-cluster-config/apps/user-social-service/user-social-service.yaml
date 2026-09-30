@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-social-service
+  labels:
+    app: user-social-service
+spec:
+  replicas: 1 # Scales out the microservice for high availability
+  selector:
+    matchLabels:
+      app: user-social-service
+  template:
+    metadata:
+      labels:
+        app: user-social-service
+    spec:
+      containers:
+      - name: user-social-service
+        image: user-social-service
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 4001
+        # Injects the ConfigMap data into the container environment variables
+        envFrom:
+        - secretRef:
+            name: user-social-service-secrets
+        - configMapRef:
+            name: user-social-service-config
+        # Resource allocations ensure performance predictability
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Health checks help K8S auto-heal failing microservices
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4001
+          initialDelaySeconds: 15
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service # If you have database credentials, add a Secret resource here
+metadata:
+  name: user-social-service
+  labels:
+    app: user-social-service
+spec:
+  type: ClusterIP # Internal communication only; use Ingress for external access
+  selector:
+    app: user-social-service # Routes traffic to pods matching this label
+  ports:
+  - protocol: TCP
+    port: 5000         # Port exposed inside the cluster network
+    targetPort: 4001 # Port the application container is listening on
