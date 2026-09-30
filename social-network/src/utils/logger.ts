@@ -31,7 +31,7 @@ const prodFormat = combine(
 
 const logger = winston.createLogger({
     level: LOG_LEVEL,
-    defaultMeta: { service: "user-social" },
+    defaultMeta: { service: "social-network" },
     format: isDev ? devFormat : prodFormat,
     transports: [
         new winston.transports.Console(),

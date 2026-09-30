@@ -1,9 +1,0 @@
-spring:
-  application:
-    name: entitlement
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
