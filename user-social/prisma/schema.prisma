@@ -1,0 +1,76 @@
+// OnlyPays - User Service Prisma Schema
+// Responsibility: User identity & social graph (followers / following)
+// Database-per-Service: Dedicated PostgreSQL instance
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  SUBSCRIBER
+  CREATOR
+  ADMIN
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Stores user identity (Auth0 user ID as primary key), profile info, and role.
+model User {
+  id          String    @id @db.VarChar(128)
+  username    String    @unique @map("username") @db.VarChar(50)
+  email       String    @unique @map("email") @db.VarChar(255)
+  displayName String    @map("display_name") @db.VarChar(100)
+  bio         String?   @db.Text
+  avatarUrl   String?   @map("avatar_url") @db.Text
+  bannerUrl   String?   @map("banner_url") @db.Text
+  role        Role      @default(SUBSCRIBER)
+  isVerified  Boolean   @default(false) @map("is_verified")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Social graph relations
+  /// Users that this user is following (outbound edges).
+  following Follower[] @relation("UserFollowing")
+  /// Users that follow this user (inbound edges).
+  followers Follower[] @relation("UserFollowers")
+
+  @@index([username])
+  @@index([role])
+  @@map("users")
+}
+
+/// Represents a directed follow edge: `followerId` → `followingId`.
+/// Table name `followers` captures the inbound perspective (who follows whom).
+///
+/// To query "who does user A follow?"  → filter by followerId = A
+/// To query "who follows user A?"      → filter by followingId = A
+model Follower {
+  /// The user who pressed "Follow" (Auth0 user ID).
+  followerId  String   @map("follower_id") @db.VarChar(128)
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+
+  /// The user being followed (Auth0 user ID).
+  followingId String   @map("following_id") @db.VarChar(128)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([followerId, followingId])
+  /// Speed up "who follows user X?" lookups.
+  @@index([followingId])
+  /// Speed up "how many people does user X follow?" lookups.
+  @@index([followerId])
+  @@map("followers")
+}

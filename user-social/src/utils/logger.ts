@@ -31,7 +31,7 @@ const prodFormat = combine(
 
 const logger = winston.createLogger({
     level: LOG_LEVEL,
-    defaultMeta: { service: "social-network" },
+    defaultMeta: { service: "user-service" },
     format: isDev ? devFormat : prodFormat,
     transports: [
         new winston.transports.Console(),
@@ -40,18 +40,16 @@ const logger = winston.createLogger({
     exitOnError: false,
 });
 
-// // ─── Child-logger factory ────────────────────────────────────────────────────
-
-// /**
-//  * Returns a child logger pre-seeded with the request's correlation ID.
-//  * Use this inside controllers / middleware so every log line is traceable.
-//  *
-//  * @example
-//  * const log = childLogger(req.correlationId);
-//  * log.info("Processing request", { userId: req.authUserId });
-//  */
-// export function childLogger(correlationId?: string): winston.Logger {
-//     return logger.child({ correlationId });
-// }
+/**
+ * Returns a child logger pre-seeded with the request's correlation ID.
+ * Use this inside controllers / middleware so every log line is traceable.
+ *
+ * @example
+ * const log = childLogger(req.correlationId);
+ * log.info("Processing request", { userId: req.authUserId });
+ */
+export function childLogger(correlationId?: string): winston.Logger {
+    return logger.child({ correlationId });
+}
 
 export default logger;

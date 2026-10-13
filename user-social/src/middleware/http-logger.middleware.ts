@@ -17,7 +17,7 @@ export const httpLoggerMiddleware = (
         const latencyMs = Date.now() - start;
         const level =
             res.statusCode >= 500 ? "error" :
-            res.statusCode >= 400 ? "warn"  : "info";
+                res.statusCode >= 400 ? "warn" : "info";
 
         logger[level]("HTTP request", {
             method: req.method,

@@ -27,6 +27,7 @@ const corsOptions = {
         "X-User-Roles",
         "Idempotency-Key",
         "X-Idempotency-Key",
+        "X-Webhook-Secret",
     ],
     credentials: true,
 };
@@ -43,7 +44,7 @@ app.use(httpLoggerMiddleware);
 
 // Health & Readiness Probes
 app.get("/health", (_req: Request, res: Response) => {
-    res.status(200).json({ status: "OK", service: "user-social", timestamp: new Date().toISOString() });
+    res.status(200).json({ status: "OK", service: "user-social-service", timestamp: new Date().toISOString() });
 });
 
 app.get("/ready", async (_req: Request, res: Response) => {
@@ -75,7 +76,7 @@ async function startServer() {
         logger.info("Connected to PostgreSQL via Prisma Client");
 
         app.listen(PORT, () => {
-            logger.info(`User & Social Service listening on port ${PORT}`);
+            logger.info(`User Service listening on port ${PORT}`);
         });
     } catch (error) {
         logger.error("Failed to connect to database", { error: (error as Error).message, stack: (error as Error).stack });

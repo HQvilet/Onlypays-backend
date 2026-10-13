@@ -11,7 +11,7 @@ declare global {
 
 /**
  * Auth Middleware.
- * Reads the `X-User-Id` header injected by the Kong API Gateway (which has
+ * Reads the `X-User-Id` header injected by the Envoy Gateway (which has
  * already validated the Auth0 JWT). If the header is missing the request is
  * rejected with 401 before it reaches any controller.
  *

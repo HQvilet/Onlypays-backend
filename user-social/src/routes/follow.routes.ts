@@ -5,11 +5,15 @@ import {
     getFollowing,
     unfollowUser,
 } from "../controllers/follow.controller.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.post("/:targetUserId", followUser);
-router.delete("/:targetUserId", unfollowUser);
+// Protected — caller must be authenticated
+router.post("/:targetUserId", authMiddleware, followUser);
+router.delete("/:targetUserId", authMiddleware, unfollowUser);
+
+// Public — follower and following lists can be queried by userId
 router.get("/:userId/followers", getFollowers);
 router.get("/:userId/following", getFollowing);
 

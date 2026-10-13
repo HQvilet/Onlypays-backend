@@ -4,6 +4,38 @@ import type { Role } from "@prisma/client";
 // Request body / param / query shapes
 // ---------------------------------------------------------------------------
 
+/** Body of POST /api/users/webhook (or POST /api/users) */
+export interface CreateUserWebhookBody {
+    /** Primary Auth0 user ID (accepts id, userId, or sub) */
+    id?: string;
+    userId?: string;
+    sub?: string;
+
+    /** Unique email */
+    email: string;
+
+    /** Unique handle / username (accepts username or nickname) */
+    username?: string;
+    nickname?: string;
+
+    /** Display name (accepts displayName or name) */
+    displayName?: string;
+    name?: string;
+
+    /** Profile pictures / URLs (accepts avatarUrl or picture) */
+    avatarUrl?: string;
+    picture?: string;
+
+    /** Optional banner image URL */
+    bannerUrl?: string;
+
+    /** Optional bio text */
+    bio?: string;
+
+    /** Role: SUBSCRIBER | CREATOR | ADMIN (defaults to SUBSCRIBER) */
+    role?: Role;
+}
+
 /** Body of PATCH /api/users/me */
 export interface UpdateUserProfileBody {
     displayName?: string;
@@ -39,6 +71,12 @@ export interface UserProfileDto {
     role: Role;
     isVerified: boolean;
     createdAt: Date;
+}
+
+/** Result returned after processing a webhook user creation request. */
+export interface CreateUserResult {
+    user: UserProfileDto;
+    created: boolean;
 }
 
 /** Internal type used to identify the calling user from gateway headers. */

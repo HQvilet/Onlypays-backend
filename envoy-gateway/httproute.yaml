@@ -8,19 +8,22 @@ spec:
     - name: envoy-gateway
       sectionName: http
       kind: Gateway
-  # hostnames:
-  #   - "onlypays.com"
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: "/api/user-social"
+            value: "/user-social"
       filters:
         - type: URLRewrite
           urlRewrite:
             path:
               type: ReplacePrefixMatch
               replacePrefixMatch: "/"
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: "X-Correlation-ID"
+                value: "%REQ(x-request-id)%"
       backendRefs:
         - name: user-social-service
           port: 5000

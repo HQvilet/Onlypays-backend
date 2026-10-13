@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import type {
+    CreateUserWebhookBody,
     UpdateUserProfileBody,
     UserIdParam,
     UsernameParam,
@@ -28,6 +29,42 @@ function handleServiceError(res: Response, error: unknown, correlationId?: strin
         return;
     }
 
+    if (message === "INVALID_USER_ID") {
+        res.status(400).json({
+            status: "error",
+            message: "A valid user ID (id, userId, or sub) is required.",
+            correlationId,
+        });
+        return;
+    }
+
+    if (message === "INVALID_EMAIL") {
+        res.status(400).json({
+            status: "error",
+            message: "A valid email address is required.",
+            correlationId,
+        });
+        return;
+    }
+
+    if (message === "EMAIL_TAKEN") {
+        res.status(409).json({
+            status: "error",
+            message: "Email is already registered by another account.",
+            correlationId,
+        });
+        return;
+    }
+
+    if (message === "USERNAME_TAKEN") {
+        res.status(409).json({
+            status: "error",
+            message: "Username is already taken.",
+            correlationId,
+        });
+        return;
+    }
+
     childLogger(correlationId).error("[UserController] Unhandled service error", {
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
@@ -36,8 +73,31 @@ function handleServiceError(res: Response, error: unknown, correlationId?: strin
 }
 
 // ---------------------------------------------------------------------------
-// Controllers  (req.auth0UserId is guaranteed by authMiddleware on guarded routes)
+// Controllers
 // ---------------------------------------------------------------------------
+
+/**
+ * POST /api/users/webhook (or POST /api/users)
+ * Provisions/creates a user record from an incoming webhook (e.g. Auth0 Action).
+ * Guarded by webhookSecretMiddleware.
+ */
+export const createUserWebhook = async (
+    req: Request<Record<string, never>, unknown, CreateUserWebhookBody>,
+    res: Response,
+): Promise<void> => {
+    try {
+        const result = await userService.createUser(req.body);
+        const statusCode = result.created ? 201 : 200;
+        res.status(statusCode).json({
+            status: "success",
+            data: result.user,
+            created: result.created,
+            correlationId: req.correlationId,
+        });
+    } catch (error) {
+        handleServiceError(res, error, req.correlationId);
+    }
+};
 
 /**
  * GET /api/users/me
@@ -57,7 +117,7 @@ export const getCurrentUser = async (
 
 /**
  * GET /api/users/:id
- * Returns a user's public profile by internal UUID.
+ * Returns a user's public profile by user ID (Auth0 user ID).
  */
 export const getUserById = async (
     req: Request<UserIdParam>,
