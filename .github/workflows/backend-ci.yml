@@ -1,0 +1,68 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'payment/**'
+      - 'notification/**'
+      - 'user-social/**'
+      - 'media/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'payment/**'
+      - 'notification/**'
+      - 'user-social/**'
+      - 'media/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  changes:
+    name: Detect changed backend services
+    runs-on: ubuntu-latest
+    outputs:
+      # payment: ${{ steps.filter.outputs.payment }}
+      # notification: ${{ steps.filter.outputs.notification }}
+      user_social: ${{ steps.filter.outputs.user_social }}
+      # media: ${{ steps.filter.outputs.media }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect file changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: main
+          filters: |
+            payment:
+              - 'payment/**'
+            notification:
+              - 'notification/**'
+            user_social:
+              - 'user-social/**'
+            media:
+              - 'media/**'
+
+  user-social:
+    name: User Social Service
+    needs: changes
+    if: needs.changes.outputs.user_social == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        run: docker compose -f user-social/docker-compose.yaml build
+
+      # - name: Testing
+      #   run: docker compose -f user-social/docker-compose.yaml run --rm user-social-service npm run test
