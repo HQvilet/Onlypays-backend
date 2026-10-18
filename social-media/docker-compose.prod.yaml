@@ -1,0 +1,12 @@
+services:
+  production:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: social-media-service
+    ports:
+      - "4002:4002"
+    environment:
+      NODE_ENV: production
+      PORT: 4002

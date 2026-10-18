@@ -36,12 +36,11 @@ const FEATURE_MODELS = [
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         uri:
-          configService.get<string>('MONGODB_URI') ||
-          'mongodb://localhost:27017/onlypays_social_media',
+          configService.get<string>('MONGODB_URI'),
       }),
     }),
     MongooseModule.forFeature(FEATURE_MODELS),
   ],
   exports: [MongooseModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

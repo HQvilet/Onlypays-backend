@@ -1,30 +1,50 @@
-# Use the official Node.js image with Alpine Linux for a lightweight footprint
-FROM node:20-alpine
+# ---- Stage 1: development (hot reload, all deps, source bind-mounted) ----
+FROM node:22-alpine AS development
 
-# Create and set the working directory inside the container
-WORKDIR /app
+# Prisma's engines need OpenSSL on Alpine
+# RUN apk add --no-cache openssl
 
-# Copy package.json and package-lock.json first to leverage Docker caching
+WORKDIR /usr/src/app
+
+# Schema must be present before install so Prisma's postinstall can find it
 COPY package*.json ./
+COPY prisma ./prisma
+RUN npm ci
 
-# Copy the prisma directory so the schema is available for code generation
-COPY prisma ./prisma/
-
-# Install dependencies (including dev so we get the prisma CLI)
-RUN npm install
-
-# Generate the Prisma client
-RUN npx prisma generate
-
-# Remove devDependencies to keep the image lightweight
-RUN npm prune --omit=dev
-
-# Copy the remaining application files
 COPY . .
 
+# Generate the Prisma Client into node_modules/.prisma
+RUN npm run db:generate
 
-# Expose the application port (defaults to 4001 as configured in the backend)
 EXPOSE 4001
+# Node 18.11+ has a built-in watcher, so no nodemon needed
+CMD ["npm", "run", "dev"]
 
-# Start the backend server using the start script (tsx src/server.ts)
-CMD ["npm", "start"]
+
+# ---- Stage 2: build (generate client -> compile -> strip devDependencies) ----
+FROM development AS build
+
+# Client is already generated above, so the compile can see Prisma's types.
+# Define "build" in package.json, e.g. "build": "tsc -p tsconfig.json"
+RUN npm run build && npm prune --omit=dev
+ 
+ 
+# ---- Stage 3: production (compiled output only) ----
+FROM node:22-alpine AS production
+ 
+RUN apk add --no-cache openssl
+ 
+ENV NODE_ENV=production
+WORKDIR /usr/src/app
+ 
+COPY --from=build /usr/src/app/package*.json ./
+COPY --from=build /usr/src/app/node_modules ./node_modules
+# Make sure the generated client survives `npm prune`
+COPY --from=development /usr/src/app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /usr/src/app/dist ./dist
+# Needed for `prisma migrate deploy`
+COPY --from=build /usr/src/app/prisma ./prisma
+ 
+USER node
+EXPOSE 3000
+CMD ["node", "dist/index.js"]

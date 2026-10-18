@@ -1,0 +1,12 @@
+services:
+  production:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: user-social-service:latest
+    ports:
+      - "4001:4001"
+    environment:
+      NODE_ENV: production
+      PORT: 4001

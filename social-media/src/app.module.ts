@@ -24,4 +24,4 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

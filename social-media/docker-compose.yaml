@@ -1,0 +1,28 @@
+services:
+  development:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: social-media-service
+    ports:
+      - "4002:4002"
+    environment:
+      NODE_ENV: development
+      PORT: 4002
+    env_file:
+      - .env
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: social-media-service-test
+    environment:
+      NODE_ENV: test
+    env_file:
+      - .env

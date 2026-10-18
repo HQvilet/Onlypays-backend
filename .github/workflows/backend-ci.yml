@@ -8,6 +8,7 @@ on:
       - 'payment/**'
       - 'notification/**'
       - 'user-social/**'
+      - 'social-media/**'
       - 'media/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'payment/**'
       - 'notification/**'
       - 'user-social/**'
+      - 'social-media/**'
       - 'media/**'
       - '.github/workflows/backend-ci.yml'
 
@@ -28,6 +30,7 @@ jobs:
       # payment: ${{ steps.filter.outputs.payment }}
       # notification: ${{ steps.filter.outputs.notification }}
       user_social: ${{ steps.filter.outputs.user_social }}
+      social_media: ${{ steps.filter.outputs.social_media }}
       # media: ${{ steps.filter.outputs.media }}
 
     steps:
@@ -46,14 +49,19 @@ jobs:
               - 'notification/**'
             user_social:
               - 'user-social/**'
-            media:
-              - 'media/**'
+            social_media:
+              - 'social-media/**'
+            # media:
+            #   - 'media/**'
 
   user-social:
     name: User Social Service
     needs: changes
     if: needs.changes.outputs.user_social == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./user-social
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +70,34 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker Image
-        run: docker compose -f user-social/docker-compose.yaml build
+        run: docker compose -f docker-compose.prod.yaml build
 
       # - name: Testing
-      #   run: docker compose -f user-social/docker-compose.yaml run --rm user-social-service npm run test
+      #   run: docker compose -f docker-compose.prod.yaml run --rm user-social-service npm run test
+  
+  social-media:
+    name: Social Media Service
+    needs: changes
+    if: needs.changes.outputs.social_media == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./social-media
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cat > .env <<'EOF'
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          EOF
+
+      - name: Build Docker Image
+        run: docker compose -f docker-compose.prod.yaml build
+
+      - name: Testing
+        run: docker compose run --rm test

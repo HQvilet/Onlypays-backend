@@ -1,14 +1,15 @@
-version: '3.8'
-
 services:
-  backend:
+  development:
     build:
       context: .
       dockerfile: Dockerfile
+      target: development
     image: user-social-service
     ports:
       - "4001:4001"
     environment:
       NODE_ENV: development
       PORT: 4001
-    restart: unless-stopped
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
