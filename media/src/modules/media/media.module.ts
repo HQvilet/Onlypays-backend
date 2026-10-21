@@ -6,4 +6,4 @@ import { MediaService } from './media.service.js';
   controllers: [MediaController],
   providers: [MediaService],
 })
-export class MediaModule {}
+export class MediaModule { }

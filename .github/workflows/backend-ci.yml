@@ -31,7 +31,7 @@ jobs:
       # notification: ${{ steps.filter.outputs.notification }}
       user_social: ${{ steps.filter.outputs.user_social }}
       social_media: ${{ steps.filter.outputs.social_media }}
-      # media: ${{ steps.filter.outputs.media }}
+      media: ${{ steps.filter.outputs.media }}
 
     steps:
       - name: Checkout code
@@ -51,8 +51,8 @@ jobs:
               - 'user-social/**'
             social_media:
               - 'social-media/**'
-            # media:
-            #   - 'media/**'
+            media:
+              - 'media/**'
 
   user-social:
     name: User Social Service
@@ -69,11 +69,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create .env file
+        run: |
+          cat > .env <<'EOF'
+          DATABASE_URL=${{ secrets.USER_SOCIAL_SERVICE_DATABASE_URL }}
+          REDIS_HOST=${{ secrets.USER_SOCIAL_SERVICE_REDIS_HOST }}
+          REDIS_PORT=${{ secrets.USER_SOCIAL_SERVICE_REDIS_PORT }}
+          REDIS_PASSWORD=${{ secrets.USER_SOCIAL_SERVICE_REDIS_PASSWORD }}
+          WEBHOOK_SECRET=${{ secrets.USER_SOCIAL_SERVICE_WEBHOOK_SECRET }}
+          EOF
+
       - name: Build Docker Image
         run: docker compose -f docker-compose.prod.yaml build
 
-      # - name: Testing
-      #   run: docker compose -f docker-compose.prod.yaml run --rm user-social-service npm run test
+      - name: Testing
+        run: docker compose -f docker-compose.prod.yaml run --rm user-social-service npm run test
   
   social-media:
     name: Social Media Service
@@ -93,7 +103,7 @@ jobs:
       - name: Create .env file
         run: |
           cat > .env <<'EOF'
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          MONGODB_URI=${{ secrets.SOCIAL_MEDIA_SERVICE_MONGODB_URI }}
           EOF
 
       - name: Build Docker Image
@@ -101,3 +111,37 @@ jobs:
 
       - name: Testing
         run: docker compose run --rm test
+
+  media:
+    name: Media Service
+    needs: changes
+    if: needs.changes.outputs.media == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./media
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cat > .env <<'EOF'
+          MONGODB_URI=${{ secrets.MEDIA_SERVICE_MONGODB_URI }}
+          S3_BUCKET=${{ secrets.MEDIA_SERVICE_S3_BUCKET }}
+          S3_REGION=${{ secrets.MEDIA_SERVICE_S3_REGION }}
+          S3_ENDPOINT=${{ secrets.MEDIA_SERVICE_S3_ENDPOINT }}
+          AWS_ACCESS_KEY_ID=${{ secrets.MEDIA_SERVICE_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.MEDIA_SERVICE_AWS_SECRET_ACCESS_KEY }}
+          CDN_BASE_URL=${{ secrets.MEDIA_SERVICE_CDN_BASE_URL }}
+          PRESIGNED_URL_TTL_SECONDS=${{ secrets.MEDIA_SERVICE_PRESIGNED_URL_TTL_SECONDS }}
+          EOF
+
+      - name: Build Docker Image
+        run: docker compose -f docker-compose.prod.yaml build
+
+      - name: Testing
+        run: docker compose run --rm test 

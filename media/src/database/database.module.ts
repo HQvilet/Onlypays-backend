@@ -21,4 +21,4 @@ const FEATURE_MODELS = [
   ],
   exports: [MongooseModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }
