@@ -1,0 +1,45 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: in-app-purchase
+
+  datasource:
+    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:onlypays_iap}}}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres.${DATABASE_USERNAME:postgres}}
+    password: ${DATABASE_PASSWORD:${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:postgres}}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      data-source-properties:
+        prepareThreshold: 0
+
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    schemas: in_app_purchase
+    default-schema: in_app_purchase
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: in_app_purchase
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  devtools:
+    restart:
+      enabled: true
+      poll-interval: 2s
+      quiet-period: 1s
+      additional-paths:
+        - src/main/resources
+        - target/classes
+    livereload:
+      enabled: true
+      port: 35729

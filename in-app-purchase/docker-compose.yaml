@@ -1,0 +1,38 @@
+services:
+  development:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: in-app-purchase-service:dev
+    container_name: onlypays-iap-dev
+    ports:
+      - "8081:8081"
+      - "5005:5005"   # Remote JDWP debugging
+      - "35729:35729" # DevTools LiveReload
+    environment:
+      PORT: 8081
+      NODE_ENV: development
+      SPRING_DEVTOOLS_RESTART_ENABLED: "true"
+      SPRING_DEVTOOLS_RESTART_POLL_INTERVAL: 2s
+      SPRING_DEVTOOLS_RESTART_QUIET_PERIOD: 1s
+    env_file:
+      - .env
+    volumes:
+      # Bind-mount project directory for real-time hot reloading
+      - .:/workspace
+      # Mount local host Maven repository cache for instant startup
+      - ~/.m2:/root/.m2
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: in-app-purchase-service:test
+    volumes:
+      - .:/workspace
+      - ~/.m2:/root/.m2
+    env_file:
+      - .env
+
